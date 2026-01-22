@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Call - Translation Meet</title>
+  <link rel="stylesheet" href="/css/room.css?v=2">
+  <style>
+    /* Inline fallback styles to ensure buttons show */
+    .controls {
+      background: #16213e;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      border-top: 2px solid #0f3460;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+    }
+    .control-btn {
+      min-width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      border: 2px solid #0f3460;
+      background: #000;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 10px;
+    }
+    .control-btn.active {
+      background: #00d4ff;
+      border-color: #00d4ff;
+      color: #000;
+    }
+    .control-btn.btn-leave {
+      background: #e94560;
+      border-color: #e94560;
+    }
+    .control-btn .icon {
+      font-size: 32px;
+    }
+    .control-btn .label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Call Screen -->
+    <div id="call-screen" class="screen active">
+      <div class="header">
+        <div class="room-info">
+          <span id="room-name">Room: </span>
+          <span id="user-language"></span>
+        </div>
+        <button id="leave-btn" class="btn-danger">Leave Call</button>
+      </div>
+
+      <div class="video-grid" id="video-grid">
+        <div class="video-container">
+          <video id="local-video" autoplay muted playsinline></video>
+          <div class="video-label">You</div>
+          <div class="subtitle-overlay" id="local-subtitle"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="toggle-video" class="control-btn active" title="Toggle Camera">
+          <span class="icon">📹</span>
+          <span class="label">Video</span>
+        </button>
+        <button id="toggle-audio" class="control-btn active" title="Toggle Microphone">
+          <span class="icon">🎤</span>
+          <span class="label">Mic</span>
+        </button>
+        <button id="toggle-transcription" class="control-btn" title="Toggle Translation">
+          <span class="icon">💬</span>
+          <span class="label">Translate</span>
+        </button>
+        <button id="leave-btn-bottom" class="control-btn btn-leave" title="Leave Call">
+          <span class="icon">📞</span>
+          <span class="label">Leave</span>
+        </button>
+      </div>
+
+      <div class="transcription-panel" id="transcription-panel">
+        <h3>Live Transcription</h3>
+        <div id="transcription-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script src="/config.js?v=2"></script>
+  <script src="/js/room.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000'
+
+export const LANGUAGES = [
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'te', name: 'Telugu', nativeName: 'Telugu (తెలుగు)' },
+  { code: 'hi', name: 'Hindi', nativeName: 'Hindi (हिन्दी)' },
+  { code: 'ta', name: 'Tamil', nativeName: 'Tamil (தமிழ்)' },
+  { code: 'kn', name: 'Kannada', nativeName: 'Kannada (ಕನ್ನಡ)' },
+  { code: 'ml', name: 'Malayalam', nativeName: 'Malayalam (മലയാളം)' },
+  { code: 'mr', name: 'Marathi', nativeName: 'Marathi (मराठी)' },
+  { code: 'bn', name: 'Bengali', nativeName: 'Bengali (বাংলা)' },
+  { code: 'gu', name: 'Gujarati', nativeName: 'Gujarati (ગુજરાતી)' },
+  { code: 'pa', name: 'Punjabi', nativeName: 'Punjabi (ਪੰਜਾਬੀ)' },
+  { code: 'es', name: 'Spanish', nativeName: 'Spanish (Español)' },
+  { code: 'fr', name: 'French', nativeName: 'French (Français)' },
+  { code: 'de', name: 'German', nativeName: 'German (Deutsch)' },
+  { code: 'it', name: 'Italian', nativeName: 'Italian (Italiano)' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Portuguese (Português)' },
+  { code: 'ru', name: 'Russian', nativeName: 'Russian (Русский)' },
+  { code: 'zh', name: 'Chinese', nativeName: 'Chinese (中文)' },
+  { code: 'ja', name: 'Japanese', nativeName: 'Japanese (日本語)' },
+  { code: 'ko', name: 'Korean', nativeName: 'Korean (한국어)' },
+  { code: 'ar', name: 'Arabic', nativeName: 'Arabic (العربية)' },
+  { code: 'tr', name: 'Turkish', nativeName: 'Turkish (Türkçe)' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Vietnamese (Tiếng Việt)' },
+  { code: 'th', name: 'Thai', nativeName: 'Thai (ไทย)' },
+  { code: 'id', name: 'Indonesian', nativeName: 'Indonesian (Bahasa Indonesia)' },
+]

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1a1a2e;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .test-container {
+      text-align: center;
+      color: white;
+    }
+    h1 {
+      color: #00d4ff;
+      margin-bottom: 30px;
+    }
+    .controls {
+      background: #16213e;
+      padding: 30px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      border: 2px solid #0f3460;
+    }
+    .control-btn {
+      min-width: 100px;
+      height: 100px;
+      border-radius: 12px;
+      border: 3px solid #0f3460;
+      background: #0f3460;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      transition: all 0.3s;
+    }
+    .control-btn:hover {
+      transform: scale(1.05);
+      border-color: #00d4ff;
+    }
+    .control-btn.active {
+      background: #00d4ff;
+      border-color: #00d4ff;
+      color: #000;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    }
+    .control-btn.btn-leave {
+      background: #e94560;
+      border-color: #e94560;
+    }
+    .control-btn.btn-leave:hover {
+      background: #d63447;
+    }
+    .control-btn .icon {
+      font-size: 40px;
+      display: block;
+    }
+    .control-btn .label {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .status {
+      margin-top: 30px;
+      padding: 20px;
+      background: #16213e;
+      border-radius: 8px;
+      border: 2px solid #0f3460;
+    }
+    .status-item {
+      margin: 10px 0;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🎮 Button Test Page</h1>
+    <p style="margin-bottom: 20px;">Click buttons to test toggle functionality</p>
+    
+    <div class="controls">
+      <button id="toggle-video" class="control-btn active" title="Toggle Camera">
+        <span class="icon">📹</span>
+        <span class="label">Video</span>
+      </button>
+      <button id="toggle-audio" class="control-btn active" title="Toggle Microphone">
+        <span class="icon">🎤</span>
+        <span class="label">Mic</span>
+      </button>
+      <button id="toggle-transcription" class="control-btn" title="Toggle Translation">
+        <span class="icon">💬</span>
+        <span class="label">Translate</span>
+      </button>
+      <button id="leave-btn" class="control-btn btn-leave" title="Leave Call">
+        <span class="icon">📞</span>
+        <span class="label">Leave</span>
+      </button>
+    </div>
+
+    <div class="status">
+      <div class="status-item">📹 Video: <span id="video-status">ON</span></div>
+      <div class="status-item">🎤 Mic: <span id="mic-status">ON</span></div>
+      <div class="status-item">💬 Translation: <span id="translate-status">OFF</span></div>
+    </div>
+
+    <p style="margin-top: 30px; color: #aaa;">
+      If you can see and click these buttons, the styling is working!<br>
+      Go back to: <a href="/" style="color: #00d4ff;">Home</a>
+    </p>
+  </div>
+
+  <script>
+    // Test button functionality
+    const videoBtn = document.getElementById('toggle-video');
+    const audioBtn = document.getElementById('toggle-audio');
+    const translateBtn = document.getElementById('toggle-transcription');
+    const leaveBtn = document.getElementById('leave-btn');
+
+    const videoStatus = document.getElementById('video-status');
+    const micStatus = document.getElementById('mic-status');
+    const translateStatus = document.getElementById('translate-status');
+
+    videoBtn.addEventListener('click', () => {
+      videoBtn.classList.toggle('active');
+      videoStatus.textContent = videoBtn.classList.contains('active') ? 'ON' : 'OFF';
+      videoStatus.style.color = videoBtn.classList.contains('active') ? '#00d4ff' : '#e94560';
+    });
+
+    audioBtn.addEventListener('click', () => {
+      audioBtn.classList.toggle('active');
+      micStatus.textContent = audioBtn.classList.contains('active') ? 'ON' : 'OFF';
+      micStatus.style.color = audioBtn.classList.contains('active') ? '#00d4ff' : '#e94560';
+    });
+
+    translateBtn.addEventListener('click', () => {
+      translateBtn.classList.toggle('active');
+      translateStatus.textContent = translateBtn.classList.contains('active') ? 'ON' : 'OFF';
+      translateStatus.style.color = translateBtn.classList.contains('active') ? '#00d4ff' : '#e94560';
+    });
+
+    leaveBtn.addEventListener('click', () => {
+      if (confirm('Leave test page?')) {
+        window.location.href = '/';
+      }
+    });
+
+    console.log('✅ Button test page loaded!');
+    console.log('Click buttons to test toggle functionality');
+  </script>
+</body>
+</html>
