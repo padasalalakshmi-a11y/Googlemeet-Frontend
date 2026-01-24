@@ -26,6 +26,7 @@ export default function RoomPage() {
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [transcriptionEnabled, setTranscriptionEnabled] = useState(false)
+  const [showTranscriptionPanel, setShowTranscriptionPanel] = useState(false) // ✅ NEW: Separate panel visibility
   const [subtitles, setSubtitles] = useState(new Map())
   const [transcriptions, setTranscriptions] = useState([])
 
@@ -94,6 +95,9 @@ export default function RoomPage() {
     };
 
     const handleTranslatedText = ({ original, translated, from }) => {
+      // ✅ NEW: Auto-open panel when translation arrives
+      setShowTranscriptionPanel(true)
+      
       setSubtitles(prev => {
         const newMap = new Map(prev);
         newMap.set(from, translated);
@@ -195,9 +199,7 @@ export default function RoomPage() {
       return
     }
     
-    // ✅ FIXED: Don't check audioEnabled - speech recognition is independent
-    // Speech recognition uses browser's mic access, not WebRTC audio track
-    
+    // ✅ FIXED: Toggle both speech recognition AND panel visibility
     if (transcriptionEnabled) {
       console.log('⏹️ Stopping speech recognition')
       stopListening()
@@ -206,6 +208,7 @@ export default function RoomPage() {
       console.log('🎙️ Starting speech recognition')
       startListening()
       setTranscriptionEnabled(true)
+      setShowTranscriptionPanel(true) // ✅ Open panel when starting to speak
     }
   }
 
@@ -305,10 +308,23 @@ export default function RoomPage() {
               ? 'bg-[#00d4ff] border-[#00d4ff] text-black shadow-[0_0_20px_rgba(0,212,255,0.5)]' 
               : 'bg-[#0f3460] border-[#0f3460] text-white hover:bg-[#1a4d7a] hover:border-[#00d4ff]'
           }`}
-          title="Toggle Translation"
+          title="Toggle Translation (Start/Stop Speaking)"
         >
           <span className="text-[32px]">💬</span>
           <span className="text-xs font-semibold uppercase tracking-wider">Translate</span>
+        </button>
+
+        <button
+          onClick={() => setShowTranscriptionPanel(!showTranscriptionPanel)}
+          className={`min-w-[80px] h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 px-2.5 py-2.5 transition-all hover:scale-105 ${
+            showTranscriptionPanel 
+              ? 'bg-[#00d4ff] border-[#00d4ff] text-black shadow-[0_0_20px_rgba(0,212,255,0.5)]' 
+              : 'bg-[#0f3460] border-[#0f3460] text-white hover:bg-[#1a4d7a] hover:border-[#00d4ff]'
+          }`}
+          title="Show/Hide Translation Panel"
+        >
+          <span className="text-[32px]">📋</span>
+          <span className="text-xs font-semibold uppercase tracking-wider">Panel</span>
         </button>
 
         <button
@@ -324,20 +340,36 @@ export default function RoomPage() {
       {/* Transcription Panel - matching room.css */}
       <div 
         className={`fixed top-0 bottom-0 w-[350px] bg-[#16213e] p-5 overflow-y-auto border-l-2 border-[#0f3460] z-[1000] transition-all duration-300 ${
-          transcriptionEnabled ? 'right-0' : '-right-[350px]'
+          showTranscriptionPanel ? 'right-0' : '-right-[350px]'
         }`}
       >
-        <h3 className="text-[#00d4ff] text-xl font-bold mb-5">Live Transcription</h3>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-[#00d4ff] text-xl font-bold">Live Transcription</h3>
+          <button
+            onClick={() => setShowTranscriptionPanel(false)}
+            className="text-white hover:text-[#e94560] text-2xl"
+            title="Close Panel"
+          >
+            ✕
+          </button>
+        </div>
         <div className="flex flex-col gap-4">
-          {transcriptions.map((item, index) => (
-            <div 
-              key={index} 
-              className="bg-[#0f3460] p-4 rounded-lg border-l-[3px] border-[#00d4ff]"
-            >
-              <div className="text-gray-400 text-[13px] mb-2">Original: {item.original}</div>
-              <div className="text-white text-[15px] font-medium">{item.translated}</div>
+          {transcriptions.length === 0 ? (
+            <div className="text-gray-400 text-center py-8">
+              <p className="mb-2">No translations yet</p>
+              <p className="text-sm">Click 💬 Translate button and start speaking</p>
             </div>
-          ))}
+          ) : (
+            transcriptions.map((item, index) => (
+              <div 
+                key={index} 
+                className="bg-[#0f3460] p-4 rounded-lg border-l-[3px] border-[#00d4ff]"
+              >
+                <div className="text-gray-400 text-[13px] mb-2">Original: {item.original}</div>
+                <div className="text-white text-[15px] font-medium">{item.translated}</div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
