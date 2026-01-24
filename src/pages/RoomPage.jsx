@@ -176,15 +176,14 @@ export default function RoomPage() {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0]
       if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled
-        setAudioEnabled(audioTrack.enabled)
+        const newState = !audioTrack.enabled
+        audioTrack.enabled = newState
+        setAudioEnabled(newState)
+        console.log('🎤 Audio toggled:', newState ? 'ON' : 'OFF')
         
-        // Stop speech recognition if mic is disabled
-        if (!audioTrack.enabled && transcriptionEnabled) {
-          console.log('🎤 Mic disabled - stopping speech recognition')
-          stopListening()
-          setTranscriptionEnabled(false)
-        }
+        // ✅ FIXED: Don't interfere with speech recognition
+        // Speech recognition and audio track are independent
+        // User can mute mic for call but still use translation
       }
     }
   }
@@ -196,19 +195,18 @@ export default function RoomPage() {
       return
     }
     
-    if (!audioEnabled) {
-      alert('Please enable your microphone first')
-      return
-    }
+    // ✅ FIXED: Don't check audioEnabled - speech recognition is independent
+    // Speech recognition uses browser's mic access, not WebRTC audio track
     
     if (transcriptionEnabled) {
       console.log('⏹️ Stopping speech recognition')
       stopListening()
+      setTranscriptionEnabled(false)
     } else {
       console.log('🎙️ Starting speech recognition')
       startListening()
+      setTranscriptionEnabled(true)
     }
-    setTranscriptionEnabled(!transcriptionEnabled)
   }
 
   const leaveCall = () => {
@@ -352,6 +350,7 @@ function RemoteVideo({ stream, subtitle }) {
   useEffect(() => {
     if (stream && videoRef.current) {
       videoRef.current.srcObject = stream
+      console.log('✅ Remote video stream set:', stream.id)
     }
   }, [stream])
 
@@ -360,6 +359,7 @@ function RemoteVideo({ stream, subtitle }) {
       <video
         ref={videoRef}
         autoPlay
+        muted={false}
         playsInline
         className="w-full h-full object-cover"
       />
