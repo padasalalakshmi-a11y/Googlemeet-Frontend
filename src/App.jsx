@@ -1,10 +1,30 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
 import LandingPage from './pages/LandingPage'
 import MeetPage from './pages/MeetPage'
 import PrejoinPage from './pages/PrejoinPage'
 import RoomPage from './pages/RoomPage'
+import { SERVER_URL } from './config'
 
 function App() {
+  // ✅ FIXED: Keep backend alive to prevent cold starts (Render free tier)
+  useEffect(() => {
+    // Ping backend every 10 minutes to keep it awake
+    const keepAlive = setInterval(async () => {
+      try {
+        await fetch(`${SERVER_URL}/health`)
+        console.log('✅ Backend kept alive')
+      } catch (error) {
+        console.log('⚠️ Backend unreachable:', error.message)
+      }
+    }, 10 * 60 * 1000) // Every 10 minutes
+    
+    // Initial ping
+    fetch(`${SERVER_URL}/health`).catch(() => {})
+    
+    return () => clearInterval(keepAlive)
+  }, [])
+
   return (
     <Router>
       <Routes>

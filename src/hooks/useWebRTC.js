@@ -8,16 +8,23 @@ export function useWebRTC(socket, roomCode) {
   const pendingCandidatesRef = useRef(new Map()) // Queue for ICE candidates
 
   useEffect(() => {
-    // Get local media stream
+    // Get local media stream with better audio constraints
     const getLocalStream = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true
+          audio: {
+            // ✅ FIXED: Better audio quality for speech recognition
+            echoCancellation: true,       // Remove echo
+            noiseSuppression: true,        // Remove background noise
+            autoGainControl: true,         // Auto-adjust volume
+            sampleRate: 48000,             // High quality audio
+            channelCount: 1                // Mono for speech
+          }
         })
         setLocalStream(stream)
         localStreamRef.current = stream
-        console.log('✅ Local stream obtained')
+        console.log('✅ Local stream obtained with enhanced audio')
       } catch (error) {
         console.error('❌ Error accessing media:', error)
       }
@@ -38,11 +45,40 @@ export function useWebRTC(socket, roomCode) {
   const createPeerConnection = useCallback((userId) => {
     console.log('🔗 Creating peer connection for:', userId)
     
+    // ✅ FIXED: Added TURN servers for better connectivity across firewalls/NAT
     const configuration = {
       iceServers: [
+        // STUN servers (for discovering public IP)
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        
+        // TURN servers from ExpressTurn (your credentials)
+        {
+          urls: 'turn:free.expressturn.com:3478',
+          username: '000000002084607662',
+          credential: 'FnCo9YYhwp0/SQRgCuEobGyz4Zo='
+        },
+        {
+          urls: 'turns:free.expressturn.com:5349',
+          username: '000000002084607662',
+          credential: 'FnCo9YYhwp0/SQRgCuEobGyz4Zo='
+        },
+        
+        // Backup TURN servers from metered.ca (free public)
+        {
+          urls: 'turn:a.relay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:a.relay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      // Better ICE candidate gathering
+      iceCandidatePoolSize: 10
     }
     
     const peerConnection = new RTCPeerConnection(configuration)
@@ -72,11 +108,13 @@ export function useWebRTC(socket, roomCode) {
     // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate && socket) {
-        console.log('🧊 Sending ICE candidate to:', userId)
+        console.log('🧊 Sending ICE candidate to:', userId, '- Type:', event.candidate.type)
         socket.emit('ice-candidate', {
           candidate: event.candidate,
           to: userId
         })
+      } else if (!event.candidate) {
+        console.log('✅ ICE gathering complete for:', userId)
       }
     }
 
@@ -85,12 +123,21 @@ export function useWebRTC(socket, roomCode) {
       console.log('🔌 Connection state for', userId, ':', peerConnection.connectionState)
       if (peerConnection.connectionState === 'failed') {
         console.error('❌ Connection failed for:', userId)
+        console.log('🔄 Attempting to restart ICE...')
+        peerConnection.restartIce()
+      } else if (peerConnection.connectionState === 'connected') {
+        console.log('✅ Peer connection established for:', userId)
       }
     }
 
     // Monitor ICE connection state
     peerConnection.oniceconnectionstatechange = () => {
       console.log('🧊 ICE connection state for', userId, ':', peerConnection.iceConnectionState)
+      if (peerConnection.iceConnectionState === 'failed') {
+        console.error('❌ ICE connection failed - TURN servers may be needed')
+      } else if (peerConnection.iceConnectionState === 'connected') {
+        console.log('✅ ICE connection established for:', userId)
+      }
     }
 
     peersRef.current.set(userId, peerConnection)

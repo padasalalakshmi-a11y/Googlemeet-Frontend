@@ -130,9 +130,10 @@ export default function RoomPage() {
     };
   }, [socket, isConnected, createOffer, handleOffer, handleAnswer, handleIceCandidate, removePeer]);
 
-  // Join room
+  // Join room - ✅ FIXED: Don't wait for localStream to avoid race condition
   useEffect(() => {
-    if (socket && isConnected && roomCode && userName && localStream) {
+    if (socket && isConnected && roomCode && userName) {
+      console.log('🚪 Joining room:', roomCode)
       socket.emit('join-room', {
         roomCode,
         userName,
@@ -140,7 +141,7 @@ export default function RoomPage() {
         speakingLanguage
       });
     }
-  }, [socket, isConnected, roomCode, userName, localStream, receiveLanguage, speakingLanguage])
+  }, [socket, isConnected, roomCode, userName, receiveLanguage, speakingLanguage])
 
   // Handle transcription
   useEffect(() => {

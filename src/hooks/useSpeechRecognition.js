@@ -16,13 +16,31 @@ export function useSpeechRecognition(language = 'en-US') {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     const recognition = new SpeechRecognition()
     
+    // ✅ FIXED: Better settings for speech recognition
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = language
-    recognition.maxAlternatives = 1
+    recognition.maxAlternatives = 3  // Try multiple interpretations
 
     recognition.onstart = () => {
       console.log('🎤 Speech recognition started')
+    }
+
+    // ✅ ADDED: Audio detection events for better debugging
+    recognition.onaudiostart = () => {
+      console.log('🎤 Audio input detected from microphone')
+    }
+
+    recognition.onsoundstart = () => {
+      console.log('🔊 Sound detected')
+    }
+
+    recognition.onspeechstart = () => {
+      console.log('🗣️ Speech detected - listening...')
+    }
+
+    recognition.onspeechend = () => {
+      console.log('🗣️ Speech ended')
     }
 
     recognition.onresult = (event) => {
@@ -46,23 +64,34 @@ export function useSpeechRecognition(language = 'en-US') {
     recognition.onerror = (event) => {
       console.error('❌ Speech recognition error:', event.error)
       
-      // Handle different error types
+      // ✅ IMPROVED: Better error handling with user-friendly messages
       if (event.error === 'aborted') {
-        // Don't restart on abort - user likely stopped it
         console.log('⚠️ Recognition aborted')
         setIsListening(false)
         isListeningRef.current = false
       } else if (event.error === 'no-speech') {
-        console.log('⚠️ No speech detected, continuing to listen...')
-        // Continue listening
+        console.log('⚠️ No speech detected')
+        console.log('💡 Tips:')
+        console.log('   - Speak louder and clearer')
+        console.log('   - Check microphone is not muted')
+        console.log('   - Reduce background noise')
+        console.log('   - Make sure browser has microphone permission')
+        // Don't stop - keep listening
       } else if (event.error === 'audio-capture') {
         console.error('❌ No microphone found or permission denied')
+        console.log('💡 Fix: Check browser microphone permissions')
         setIsListening(false)
         isListeningRef.current = false
       } else if (event.error === 'not-allowed') {
         console.error('❌ Microphone permission denied')
+        console.log('💡 Fix: Allow microphone access in browser settings')
         setIsListening(false)
         isListeningRef.current = false
+      } else if (event.error === 'network') {
+        console.error('❌ Network error')
+        console.log('💡 Fix: Check internet connection')
+      } else {
+        console.error('❌ Unknown error:', event.error)
       }
     }
 
