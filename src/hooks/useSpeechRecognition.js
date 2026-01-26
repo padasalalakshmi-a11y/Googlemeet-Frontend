@@ -16,11 +16,11 @@ export function useSpeechRecognition(language = 'en-US') {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     const recognition = new SpeechRecognition()
     
-    // ✅ FIXED: Better settings for speech recognition
-    recognition.continuous = true
-    recognition.interimResults = true
+    // ✅ OPTIMIZED: Better settings for faster and more accurate recognition
+    recognition.continuous = true        // Keep listening continuously
+    recognition.interimResults = false   // ✅ CHANGED: Only get final results (faster!)
     recognition.lang = language
-    recognition.maxAlternatives = 3  // Try multiple interpretations
+    recognition.maxAlternatives = 1      // ✅ CHANGED: Only best match (faster!)
 
     recognition.onstart = () => {
       console.log('🎤 Speech recognition started')
@@ -44,20 +44,20 @@ export function useSpeechRecognition(language = 'en-US') {
     }
 
     recognition.onresult = (event) => {
-      let finalTranscript = ''
+      // ✅ OPTIMIZED: Get result immediately and send fast
+      const lastResult = event.results[event.results.length - 1]
       
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript + ' '
-        }
-      }
-      
-      if (finalTranscript.trim()) {
+      if (lastResult.isFinal) {
+        const text = lastResult[0].transcript.trim()
+        const confidence = lastResult[0].confidence
+        
         console.log('🎙️ Speech recognized!')
-        console.log('   Text:', finalTranscript.trim())
-        console.log('   Language:', language)
-        console.log('   Confidence:', event.results[event.results.length - 1][0].confidence)
-        setTranscript(finalTranscript.trim())
+        console.log('   Text:', text)
+        console.log('   Confidence:', (confidence * 100).toFixed(1) + '%')
+        console.log('   Sending immediately...')
+        
+        // Send immediately
+        setTranscript(text)
       }
     }
 
