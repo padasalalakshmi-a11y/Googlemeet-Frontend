@@ -67,15 +67,18 @@ export default function RoomPage() {
     if (!socket || !isConnected) return;
 
     const handleExistingUsers = (users) => {
+      console.log('👥 Existing users in room:', users.length);
+      // Only create offers to users who joined BEFORE you
       users.forEach(user => {
+        console.log('📞 Initiating connection to existing user:', user.userId);
         createOffer(user.userId);
       });
     };
 
     const handleUserJoined = ({ userId }) => {
-      setTimeout(() => {
-        createOffer(userId);
-      }, 100);
+      // ✅ FIXED: Don't create offer here to avoid race condition
+      // The new user will create offer to us via handleExistingUsers
+      console.log('👤 New user joined:', userId, '- They will initiate connection to us');
     };
 
     const handleOfferReceived = ({ offer, from }) => {
