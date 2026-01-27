@@ -4,6 +4,7 @@ import { useSocket } from '../hooks/useSocket'
 import { useWebRTC } from '../hooks/useWebRTC'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { LANGUAGES } from '../config'
+import DebugPanel from '../components/DebugPanel'
 
 export default function RoomPage() {
   const navigate = useNavigate()
@@ -228,6 +229,9 @@ export default function RoomPage() {
 
   return (
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
+      {/* Debug Panel for Mobile */}
+      <DebugPanel />
+      
       {/* Header - matching room.css #16213e */}
       <div className="bg-[#16213e] px-8 py-4 flex justify-between items-center border-b-2 border-[#0f3460]">
         <div className="flex flex-col gap-1">
