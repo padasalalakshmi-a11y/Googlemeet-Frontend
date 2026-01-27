@@ -310,7 +310,7 @@ export default function RoomPage() {
 
         <button
           onClick={toggleTranscription}
-          className={`min-w-[80px] h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 px-2.5 py-2.5 transition-all hover:scale-105 ${
+          className={`min-w-[80px] h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 px-2.5 py-2.5 transition-all hover:scale-105 relative ${
             transcriptionEnabled 
               ? 'bg-[#00d4ff] border-[#00d4ff] text-black shadow-[0_0_20px_rgba(0,212,255,0.5)]' 
               : 'bg-[#0f3460] border-[#0f3460] text-white hover:bg-[#1a4d7a] hover:border-[#00d4ff]'
@@ -319,6 +319,12 @@ export default function RoomPage() {
         >
           <span className="text-[32px]">💬</span>
           <span className="text-xs font-semibold uppercase tracking-wider">Translate</span>
+          {transcriptionEnabled && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+          )}
         </button>
 
         <button
