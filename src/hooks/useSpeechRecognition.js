@@ -37,15 +37,31 @@ export function useSpeechRecognition(language = 'en-US') {
 
     recognition.onspeechstart = () => {
       console.log('🗣️ Speech detected - listening...')
+      console.log('   ⏰ Waiting for speech to end and process...')
+      console.log('   📊 Recognition settings:')
+      console.log('      - continuous:', recognition.continuous)
+      console.log('      - interimResults:', recognition.interimResults)
+      console.log('      - lang:', recognition.lang)
     }
 
     recognition.onspeechend = () => {
       console.log('🗣️ Speech ended')
+      console.log('   ⏳ Processing speech now...')
+      console.log('   🔍 Waiting for onresult event...')
     }
 
     recognition.onresult = (event) => {
+      console.log('📝 ✅ onresult EVENT FIRED!')
+      console.log('   📊 Event details:')
+      console.log('      - Total results:', event.results.length)
+      console.log('      - Result index:', event.resultIndex)
+      
       // ✅ OPTIMIZED: Get result immediately and send fast
       const lastResult = event.results[event.results.length - 1]
+      
+      console.log('   📋 Last result details:')
+      console.log('      - isFinal:', lastResult.isFinal)
+      console.log('      - alternatives:', lastResult.length)
       
       if (lastResult.isFinal) {
         const text = lastResult[0].transcript.trim()
@@ -58,11 +74,29 @@ export function useSpeechRecognition(language = 'en-US') {
         
         // Send immediately
         setTranscript(text)
+      } else {
+        console.log('⏳ Result not final yet, waiting...')
+        console.log('   Interim text:', lastResult[0].transcript)
       }
+    }
+
+    recognition.onnomatch = (event) => {
+      console.error('❌ onnomatch EVENT: Speech was detected but not recognized!')
+      console.error('   💡 This means:')
+      console.error('      - Browser heard speech')
+      console.error('      - But could not match it to any words')
+      console.error('   🔧 Possible causes:')
+      console.error('      - Wrong language selected')
+      console.error('      - Poor audio quality')
+      console.error('      - Unclear pronunciation')
+      console.error('      - Background noise')
     }
 
     recognition.onerror = (event) => {
       console.error('❌ Speech recognition error:', event.error)
+      console.error('   📊 Error details:')
+      console.error('      - Error type:', event.error)
+      console.error('      - Message:', event.message || 'No message')
       
       // ✅ IMPROVED: Better error handling with user-friendly messages
       if (event.error === 'aborted') {
@@ -70,12 +104,13 @@ export function useSpeechRecognition(language = 'en-US') {
         setIsListening(false)
         isListeningRef.current = false
       } else if (event.error === 'no-speech') {
-        console.log('⚠️ No speech detected')
+        console.log('⚠️ No speech detected - Browser heard audio but no recognizable speech')
         console.log('💡 Tips:')
         console.log('   - Speak louder and clearer')
         console.log('   - Check microphone is not muted')
         console.log('   - Reduce background noise')
         console.log('   - Make sure browser has microphone permission')
+        console.log('   - Check if correct language is selected')
         // Don't stop - keep listening
       } else if (event.error === 'audio-capture') {
         console.error('❌ No microphone found or permission denied')
@@ -88,10 +123,21 @@ export function useSpeechRecognition(language = 'en-US') {
         setIsListening(false)
         isListeningRef.current = false
       } else if (event.error === 'network') {
-        console.error('❌ Network error')
+        console.error('❌ Network error - Cannot reach Google speech recognition servers')
         console.log('💡 Fix: Check internet connection')
+      } else if (event.error === 'service-not-allowed') {
+        console.error('❌ Speech recognition service not allowed')
+        console.error('💡 This might be due to:')
+        console.error('   - Browser security settings')
+        console.error('   - HTTPS requirement not met')
+        console.error('   - Browser does not support speech recognition')
+      } else if (event.error === 'language-not-supported') {
+        console.error('❌ Language not supported!')
+        console.error('   Selected language:', language)
+        console.error('💡 Fix: Try selecting a different language')
       } else {
         console.error('❌ Unknown error:', event.error)
+        console.error('   This is an unexpected error type')
       }
     }
 
