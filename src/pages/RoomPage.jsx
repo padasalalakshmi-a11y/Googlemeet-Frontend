@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { useWebRTC } from '../hooks/useWebRTC'
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
+import { useGoogleSpeechVAD } from '../hooks/useGoogleSpeechVAD'
 import { LANGUAGES } from '../config'
 import DebugPanel from '../components/DebugPanel'
 
@@ -27,27 +27,22 @@ export default function RoomPage() {
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [transcriptionEnabled, setTranscriptionEnabled] = useState(false)
-  const [showTranscriptionPanel, setShowTranscriptionPanel] = useState(false) // ✅ NEW: Separate panel visibility
+  const [showTranscriptionPanel, setShowTranscriptionPanel] = useState(false)
   const [subtitles, setSubtitles] = useState(new Map())
   const [transcriptions, setTranscriptions] = useState([])
 
   const localVideoRef = useRef(null)
   
-  // Map language codes to speech recognition format
-  const getSpeechLang = (code) => {
-    const langMap = {
-      'te': 'te-IN', 'hi': 'hi-IN', 'ta': 'ta-IN', 'kn': 'kn-IN',
-      'ml': 'ml-IN', 'mr': 'mr-IN', 'bn': 'bn-IN', 'gu': 'gu-IN',
-      'pa': 'pa-IN', 'es': 'es-ES', 'fr': 'fr-FR', 'de': 'de-DE',
-      'it': 'it-IT', 'pt': 'pt-PT', 'ru': 'ru-RU', 'zh': 'zh-CN',
-      'ja': 'ja-JP', 'ko': 'ko-KR', 'ar': 'ar-SA', 'en': 'en-US'
-    }
-    return langMap[code] || 'en-US'
-  }
-  
-  const { transcript, startListening, stopListening, resetTranscript } = useSpeechRecognition(
-    getSpeechLang(speakingLanguage)
-  )
+  // Speech recognition (Google Cloud Speech-to-Text with VAD)
+  const {
+    transcript,
+    isListening,
+    isSpeaking,
+    isProcessing,
+    startListening,
+    stopListening,
+    resetTranscript
+  } = useGoogleSpeechVAD(speakingLanguage)
 
   // Redirect if no session data
   useEffect(() => {
@@ -197,22 +192,16 @@ export default function RoomPage() {
   }
 
   const toggleTranscription = () => {
-    // Check if speech recognition is supported
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition not supported in this browser. Please use Chrome.')
-      return
-    }
-    
-    // ✅ FIXED: Toggle both speech recognition AND panel visibility
-    if (transcriptionEnabled) {
-      console.log('⏹️ Stopping speech recognition')
+    // Toggle Voice Activity Detection mode
+    if (isListening) {
+      console.log('⏹️ Stopping VAD mode')
       stopListening()
       setTranscriptionEnabled(false)
     } else {
-      console.log('🎙️ Starting speech recognition')
+      console.log('🎙️ Starting VAD mode - speak anytime!')
       startListening()
       setTranscriptionEnabled(true)
-      setShowTranscriptionPanel(true) // ✅ Open panel when starting to speak
+      setShowTranscriptionPanel(true) // Open panel when starting
     }
   }
 
@@ -310,19 +299,24 @@ export default function RoomPage() {
 
         <button
           onClick={toggleTranscription}
+          disabled={isProcessing}
           className={`min-w-[80px] h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 px-2.5 py-2.5 transition-all hover:scale-105 relative ${
-            transcriptionEnabled 
+            isListening 
               ? 'bg-[#00d4ff] border-[#00d4ff] text-black shadow-[0_0_20px_rgba(0,212,255,0.5)]' 
               : 'bg-[#0f3460] border-[#0f3460] text-white hover:bg-[#1a4d7a] hover:border-[#00d4ff]'
-          }`}
-          title="Toggle Translation (Start/Stop Speaking)"
+          } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          title={isProcessing ? 'Processing...' : isListening ? 'VAD Active - Speak anytime!' : 'Start VAD Mode'}
         >
-          <span className="text-[32px]">💬</span>
-          <span className="text-xs font-semibold uppercase tracking-wider">Translate</span>
-          {transcriptionEnabled && (
+          <span className="text-[32px]">
+            {isProcessing ? '⏳' : isSpeaking ? '🎤' : '💬'}
+          </span>
+          <span className="text-xs font-semibold uppercase tracking-wider">
+            {isProcessing ? 'Processing' : isSpeaking ? 'Speaking' : 'Translate'}
+          </span>
+          {isListening && !isProcessing && (
             <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isSpeaking ? 'bg-green-400' : 'bg-yellow-400'} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${isSpeaking ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
             </span>
           )}
         </button>
