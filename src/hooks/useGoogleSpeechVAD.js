@@ -1,5 +1,10 @@
 // Google Cloud Speech Recognition with Voice Activity Detection (VAD)
-// Only transcribes when user is actually speaking - saves API costs!
+// Features:
+// - Only transcribes when user is actually speaking (saves API costs!)
+// - SIZE-BASED auto-chunking: Stops at 400KB to prevent backend errors
+// - Real-time size monitoring: Tracks audio size every second
+// - Continuous speech: If still speaking, automatically starts new recording
+// - Seamless flow: Speaking → Processing → Speaking (if voice detected)
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 
@@ -19,6 +24,10 @@ export function useGoogleSpeechVAD(language = 'en') {
   const silenceTimeoutRef = useRef(null)
   const isSpeakingRef = useRef(false)
   const isListeningRef = useRef(false)
+  const recordingTimeoutRef = useRef(null)
+  const recordingStartTimeRef = useRef(null)
+  const currentAudioSizeRef = useRef(0)
+  const sizeCheckIntervalRef = useRef(null)
 
   // Voice Activity Detection using Web Audio API
   const detectVoiceActivity = useCallback(() => {
@@ -31,8 +40,8 @@ export function useGoogleSpeechVAD(language = 'en') {
     // Calculate average volume
     const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength
     
-    // Threshold for speech detection (lower = more sensitive)
-    const SPEECH_THRESHOLD = 25 // Reduced from 30 for faster detection
+    // Stricter threshold to avoid background noise
+    const SPEECH_THRESHOLD = 45 // Higher = less sensitive to noise
     const isSpeakingNow = average > SPEECH_THRESHOLD
 
     // User started speaking
@@ -51,8 +60,40 @@ export function useGoogleSpeechVAD(language = 'en') {
       // Start recording if not already recording
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'inactive') {
         audioChunksRef.current = []
-        mediaRecorderRef.current.start()
-        console.log('✅ Recording started')
+        currentAudioSizeRef.current = 0
+        recordingStartTimeRef.current = Date.now()
+        
+        // Start with timeslice to get data chunks every 1 second
+        mediaRecorderRef.current.start(1000)
+        console.log('✅ Recording started with size monitoring')
+        
+        // Monitor size every second
+        sizeCheckIntervalRef.current = setInterval(() => {
+          const MAX_SIZE = 400000 // 400KB limit (safe buffer)
+          const currentSize = currentAudioSizeRef.current
+          const elapsed = Math.round((Date.now() - recordingStartTimeRef.current) / 1000)
+          
+          console.log(`📊 Recording: ${elapsed}s, Size: ${Math.round(currentSize / 1024)}KB`)
+          
+          if (currentSize > MAX_SIZE && mediaRecorderRef.current?.state === 'recording') {
+            console.log('⚠️ Size limit reached! Auto-stopping...')
+            clearInterval(sizeCheckIntervalRef.current)
+            sizeCheckIntervalRef.current = null
+            mediaRecorderRef.current.stop()
+          }
+        }, 1000)
+        
+        // Backup: 30-second timeout
+        recordingTimeoutRef.current = setTimeout(() => {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            console.log('⏱️ 30 seconds reached - auto-processing chunk...')
+            if (sizeCheckIntervalRef.current) {
+              clearInterval(sizeCheckIntervalRef.current)
+              sizeCheckIntervalRef.current = null
+            }
+            mediaRecorderRef.current.stop()
+          }
+        }, 20000)
       }
     }
     
@@ -121,18 +162,38 @@ export function useGoogleSpeechVAD(language = 'en') {
       const processAudio = async () => {
         console.log('🎤 Processing audio segment...')
         
+        // Clear timeouts and intervals
+        if (recordingTimeoutRef.current) {
+          clearTimeout(recordingTimeoutRef.current)
+          recordingTimeoutRef.current = null
+        }
+        
+        if (sizeCheckIntervalRef.current) {
+          clearInterval(sizeCheckIntervalRef.current)
+          sizeCheckIntervalRef.current = null
+        }
+        
         if (audioChunksRef.current.length === 0) {
           console.log('⚠️ No audio chunks, skipping...')
           return
         }
         
+        // Check if user is still speaking (for auto-restart)
+        const shouldAutoRestart = isSpeakingRef.current && isListeningRef.current
+        
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          const recordingDuration = Date.now() - recordingStartTimeRef.current
           console.log('   Audio size:', audioBlob.size, 'bytes')
+          console.log('   Recording duration:', Math.round(recordingDuration / 1000), 'seconds')
           
           // Check if audio is substantial
           if (audioBlob.size < 5000) {
             console.log('⚠️ Audio too small (< 5KB), skipping...')
+            // Still auto-restart if speaking
+            if (shouldAutoRestart) {
+              setTimeout(() => restartRecording(), 100)
+            }
             return
           }
           
@@ -153,6 +214,10 @@ export function useGoogleSpeechVAD(language = 'en') {
           if (!response.ok) {
             console.error('❌ Backend error:', response.status)
             setIsProcessing(false)
+            // Still auto-restart if speaking
+            if (shouldAutoRestart) {
+              setTimeout(() => restartRecording(), 100)
+            }
             return
           }
           
@@ -167,9 +232,59 @@ export function useGoogleSpeechVAD(language = 'en') {
           }
           
           setIsProcessing(false)
+          
+          // Auto-restart recording if user is still speaking
+          if (shouldAutoRestart) {
+            console.log('🔄 User still speaking - auto-restarting recording...')
+            setTimeout(() => restartRecording(), 200)
+          }
+          
         } catch (error) {
           console.error('❌ Error:', error.message)
           setIsProcessing(false)
+          // Still auto-restart if speaking
+          if (shouldAutoRestart) {
+            setTimeout(() => restartRecording(), 100)
+          }
+        }
+      }
+      
+      // Function to restart recording (for continuous speech)
+      const restartRecording = () => {
+        if (isListeningRef.current && mediaRecorderRef.current && mediaRecorderRef.current.state === 'inactive') {
+          audioChunksRef.current = []
+          currentAudioSizeRef.current = 0
+          recordingStartTimeRef.current = Date.now()
+          mediaRecorderRef.current.start(1000)
+          console.log('✅ New recording started automatically')
+          
+          // Monitor size every second
+          sizeCheckIntervalRef.current = setInterval(() => {
+            const MAX_SIZE = 400000 // 400KB limit
+            const currentSize = currentAudioSizeRef.current
+            const elapsed = Math.round((Date.now() - recordingStartTimeRef.current) / 1000)
+            
+            console.log(`📊 Recording: ${elapsed}s, Size: ${Math.round(currentSize / 1024)}KB`)
+            
+            if (currentSize > MAX_SIZE && mediaRecorderRef.current?.state === 'recording') {
+              console.log('⚠️ Size limit reached! Auto-stopping...')
+              clearInterval(sizeCheckIntervalRef.current)
+              sizeCheckIntervalRef.current = null
+              mediaRecorderRef.current.stop()
+            }
+          }, 1000)
+          
+          // Backup: 30-second timeout
+          recordingTimeoutRef.current = setTimeout(() => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              console.log('⏱️ 30 seconds reached - auto-processing chunk...')
+              if (sizeCheckIntervalRef.current) {
+                clearInterval(sizeCheckIntervalRef.current)
+                sizeCheckIntervalRef.current = null
+              }
+              mediaRecorderRef.current.stop()
+            }
+          }, 30000)
         }
       }
       
@@ -180,10 +295,12 @@ export function useGoogleSpeechVAD(language = 'en') {
       
       mediaRecorderRef.current = mediaRecorder
       
-      // Collect audio data
+      // Collect audio data and track size in real-time
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data)
+          currentAudioSizeRef.current += event.data.size
+          console.log(`📦 Chunk received: ${event.data.size} bytes, Total: ${Math.round(currentAudioSizeRef.current / 1024)}KB`)
         }
       }
       
@@ -214,10 +331,20 @@ export function useGoogleSpeechVAD(language = 'en') {
     isListeningRef.current = false
     isSpeakingRef.current = false
     
-    // Clear timeout
+    // Clear timeouts
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current)
       silenceTimeoutRef.current = null
+    }
+    
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current)
+      recordingTimeoutRef.current = null
+    }
+    
+    if (sizeCheckIntervalRef.current) {
+      clearInterval(sizeCheckIntervalRef.current)
+      sizeCheckIntervalRef.current = null
     }
     
     // Stop recording if active
