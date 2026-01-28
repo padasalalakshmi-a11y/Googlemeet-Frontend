@@ -225,7 +225,7 @@ export default function PrejoinPage() {
                 {/* Receiving Language */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    I want to hear
+                    Transulate to see in Transulation box
                   </label>
                   <select
                     value={receiveLanguage}

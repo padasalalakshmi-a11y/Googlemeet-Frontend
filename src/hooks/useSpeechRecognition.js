@@ -3,9 +3,19 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 export function useSpeechRecognition(language = 'en-US') {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
   const recognitionRef = useRef(null)
   const isListeningRef = useRef(false)
   const restartTimeoutRef = useRef(null)
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    )
+    setIsMobile(checkMobile)
+    console.log('📱 Device type:', checkMobile ? 'Mobile' : 'Desktop')
+  }, [])
 
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -13,20 +23,36 @@ export function useSpeechRecognition(language = 'en-US') {
       return
     }
 
+    // ✅ FIX 1: Only initialize when page is visible and active
+    if (document.hidden || document.visibilityState === 'hidden') {
+      console.log('⏸️ Page hidden - delaying recognition initialization')
+      return
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     const recognition = new SpeechRecognition()
-    
-    // ✅ OPTIMIZED: Better settings for faster and more accurate recognition
-    recognition.continuous = true        // Keep listening continuously
-    recognition.interimResults = false   // ✅ CHANGED: Only get final results (faster!)
+
+    // ✅ FIX 2: Different settings for mobile vs desktop
+    recognition.continuous = !isMobile // Mobile: false, Desktop: true
+    recognition.interimResults = false
     recognition.lang = language
-    recognition.maxAlternatives = 1      // ✅ CHANGED: Only best match (faster!)
+    recognition.maxAlternatives = 1
+
+    console.log('🎤 Recognition settings:', {
+      continuous: recognition.continuous,
+      interimResults: recognition.interimResults,
+      isMobile: isMobile,
+      language: language
+    })
 
     recognition.onstart = () => {
       console.log('🎤 Speech recognition started')
+      if (isMobile) {
+        console.log('📱 MOBILE MODE: Speak ONE sentence, then pause')
+        console.log('📱 Recognition will auto-stop after ~3-5 seconds of silence')
+      }
     }
 
-    // ✅ ADDED: Audio detection events for better debugging
     recognition.onaudiostart = () => {
       console.log('🎤 Audio input detected from microphone')
     }
@@ -37,134 +63,108 @@ export function useSpeechRecognition(language = 'en-US') {
 
     recognition.onspeechstart = () => {
       console.log('🗣️ Speech detected - listening...')
-      console.log('   ⏰ Waiting for speech to end and process...')
-      console.log('   📊 Recognition settings:')
-      console.log('      - continuous:', recognition.continuous)
-      console.log('      - interimResults:', recognition.interimResults)
-      console.log('      - lang:', recognition.lang)
     }
 
     recognition.onspeechend = () => {
-      console.log('🗣️ Speech ended')
-      console.log('   ⏳ Processing speech now...')
-      console.log('   🔍 Waiting for onresult event...')
+      console.log('🗣️ Speech ended - processing...')
     }
 
     recognition.onresult = (event) => {
       console.log('📝 ✅ onresult EVENT FIRED!')
-      console.log('   📊 Event details:')
-      console.log('      - Total results:', event.results.length)
-      console.log('      - Result index:', event.resultIndex)
-      
-      // ✅ OPTIMIZED: Get result immediately and send fast
+      console.log(' 📊 Total results:', event.results.length)
+
       const lastResult = event.results[event.results.length - 1]
-      
-      console.log('   📋 Last result details:')
-      console.log('      - isFinal:', lastResult.isFinal)
-      console.log('      - alternatives:', lastResult.length)
       
       if (lastResult.isFinal) {
         const text = lastResult[0].transcript.trim()
         const confidence = lastResult[0].confidence
         
-        console.log('🎙️ Speech recognized!')
-        console.log('   Text:', text)
-        console.log('   Confidence:', (confidence * 100).toFixed(1) + '%')
-        console.log('   Sending immediately...')
+        console.log('🎙️ FINAL Speech recognized!')
+        console.log(' Text:', text)
+        console.log(' Confidence:', (confidence * 100).toFixed(1) + '%')
         
-        // Send immediately
         setTranscript(text)
       } else {
-        console.log('⏳ Result not final yet, waiting...')
-        console.log('   Interim text:', lastResult[0].transcript)
+        console.log('⏳ Interim result:', lastResult[0].transcript)
       }
     }
 
     recognition.onnomatch = (event) => {
-      console.error('❌ onnomatch EVENT: Speech was detected but not recognized!')
-      console.error('   💡 This means:')
-      console.error('      - Browser heard speech')
-      console.error('      - But could not match it to any words')
-      console.error('   🔧 Possible causes:')
-      console.error('      - Wrong language selected')
-      console.error('      - Poor audio quality')
-      console.error('      - Unclear pronunciation')
-      console.error('      - Background noise')
+      console.warn('⚠️ onnomatch: Speech not recognized')
+      console.warn('💡 Try speaking louder and more clearly')
     }
 
     recognition.onerror = (event) => {
       console.error('❌ Speech recognition error:', event.error)
-      console.error('   📊 Error details:')
-      console.error('      - Error type:', event.error)
-      console.error('      - Message:', event.message || 'No message')
       
-      // ✅ IMPROVED: Better error handling with user-friendly messages
       if (event.error === 'aborted') {
         console.log('⚠️ Recognition aborted')
         setIsListening(false)
         isListeningRef.current = false
       } else if (event.error === 'no-speech') {
-        console.log('⚠️ No speech detected - Browser heard audio but no recognizable speech')
-        console.log('💡 Tips:')
-        console.log('   - Speak louder and clearer')
-        console.log('   - Check microphone is not muted')
-        console.log('   - Reduce background noise')
-        console.log('   - Make sure browser has microphone permission')
-        console.log('   - Check if correct language is selected')
-        // Don't stop - keep listening
-      } else if (event.error === 'audio-capture') {
-        console.error('❌ No microphone found or permission denied')
-        console.log('💡 Fix: Check browser microphone permissions')
-        setIsListening(false)
-        isListeningRef.current = false
-      } else if (event.error === 'not-allowed') {
-        console.error('❌ Microphone permission denied')
-        console.log('💡 Fix: Allow microphone access in browser settings')
+        console.log('⚠️ No speech detected')
+        // ✅ FIX 3: On mobile, restart manually
+        if (isMobile && isListeningRef.current) {
+          console.log('🔄 Mobile: Restarting after no-speech...')
+          setTimeout(() => {
+            if (isListeningRef.current) {
+              try {
+                recognition.start()
+              } catch (e) {
+                console.error('Failed to restart:', e)
+              }
+            }
+          }, 500)
+        }
+      } else if (event.error === 'audio-capture' || event.error === 'not-allowed') {
+        console.error('❌ Microphone permission issue')
         setIsListening(false)
         isListeningRef.current = false
       } else if (event.error === 'network') {
-        console.error('❌ Network error - Cannot reach Google speech recognition servers')
-        console.log('💡 Fix: Check internet connection')
-      } else if (event.error === 'service-not-allowed') {
-        console.error('❌ Speech recognition service not allowed')
-        console.error('💡 This might be due to:')
-        console.error('   - Browser security settings')
-        console.error('   - HTTPS requirement not met')
-        console.error('   - Browser does not support speech recognition')
-      } else if (event.error === 'language-not-supported') {
-        console.error('❌ Language not supported!')
-        console.error('   Selected language:', language)
-        console.error('💡 Fix: Try selecting a different language')
-      } else {
-        console.error('❌ Unknown error:', event.error)
-        console.error('   This is an unexpected error type')
+        console.error('❌ Network error')
       }
     }
 
     recognition.onend = () => {
       console.log('🛑 Speech recognition ended')
       
-      // Clear any pending restart
       if (restartTimeoutRef.current) {
         clearTimeout(restartTimeoutRef.current)
       }
-      
-      // Auto-restart if still supposed to be listening
+
+      // ✅ FIX 4: Different restart logic for mobile
       if (isListeningRef.current) {
-        console.log('🔄 Auto-restarting speech recognition...')
-        restartTimeoutRef.current = setTimeout(() => {
-          try {
-            recognition.start()
-            console.log('✅ Speech recognition restarted')
-          } catch (error) {
-            console.error('❌ Error restarting recognition:', error)
-            // If already started, ignore the error
-            if (error.message && !error.message.includes('already started')) {
-              setIsListening(false)
-              isListeningRef.current = false
+        if (isMobile) {
+          // Mobile: Immediate restart with longer delay
+          console.log('🔄 Mobile: Restarting with 300ms delay...')
+          restartTimeoutRef.current = setTimeout(() => {
+            try {
+              recognition.start()
+              console.log('✅ Mobile recognition restarted')
+            } catch (error) {
+              if (!error.message?.includes('already started')) {
+                console.error('❌ Failed to restart:', error)
+                setIsListening(false)
+                isListeningRef.current = false
+              }
             }
-          }
-        }, 100) // Small delay before restart
+          }, 300)
+        } else {
+          // Desktop: Quick restart
+          console.log('🔄 Desktop: Restarting with 100ms delay...')
+          restartTimeoutRef.current = setTimeout(() => {
+            try {
+              recognition.start()
+              console.log('✅ Desktop recognition restarted')
+            } catch (error) {
+              if (!error.message?.includes('already started')) {
+                console.error('❌ Failed to restart:', error)
+                setIsListening(false)
+                isListeningRef.current = false
+              }
+            }
+          }, 100)
+        }
       }
     }
 
@@ -178,15 +178,19 @@ export function useSpeechRecognition(language = 'en-US') {
         try {
           recognitionRef.current.stop()
         } catch (error) {
-          // Ignore errors on cleanup
+          // Ignore cleanup errors
         }
       }
     }
-  }, [language])
+  }, [language, isMobile])
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) {
       console.error('❌ Speech recognition not initialized')
+      console.error('💡 Possible reasons:')
+      console.error(' - Page is hidden/in background')
+      console.error(' - Browser does not support speech recognition')
+      console.error(' - Recognition initialization failed')
       return
     }
 
@@ -195,27 +199,40 @@ export function useSpeechRecognition(language = 'en-US') {
       return
     }
 
+    // ✅ FIX 5: Add visibility check before starting
+    if (document.hidden) {
+      console.error('❌ Cannot start - page is hidden')
+      console.error('💡 Make sure the page/tab is visible and active')
+      return
+    }
+
     try {
+      console.log('🚀 Attempting to start speech recognition...')
+      console.log('📱 Device:', isMobile ? 'Mobile' : 'Desktop')
+      console.log('🔍 Page visible:', !document.hidden)
+      
       recognitionRef.current.start()
       setIsListening(true)
       isListeningRef.current = true
-      console.log('✅ Started listening')
+      
+      console.log('✅ Started listening successfully')
     } catch (error) {
       console.error('❌ Error starting recognition:', error)
-      // If already started, just update state
-      if (error.message && error.message.includes('already started')) {
+      console.error('💡 Error details:', error.message)
+      
+      if (error.message?.includes('already started')) {
         setIsListening(true)
         isListeningRef.current = true
+        console.log('⚠️ Was already started - updated state')
       }
     }
-  }, [])
+  }, [isMobile])
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) {
       return
     }
 
-    // Clear any pending restart
     if (restartTimeoutRef.current) {
       clearTimeout(restartTimeoutRef.current)
       restartTimeoutRef.current = null
@@ -240,6 +257,7 @@ export function useSpeechRecognition(language = 'en-US') {
     transcript,
     startListening,
     stopListening,
-    resetTranscript
+    resetTranscript,
+    isMobile // ✅ Export this so your UI can show mobile-specific instructions
   }
 }
