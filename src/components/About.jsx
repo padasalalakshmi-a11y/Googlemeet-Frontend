@@ -4,7 +4,7 @@ const features = [
   'HD Video Quality',
   'AI-Powered Translation',
   'No Registration Required',
-  '100% Free Forever'
+  '30 Minutes Free '
 ]
 
 export default function About() {

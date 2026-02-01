@@ -56,6 +56,19 @@ class GlobalStreamManager {
     }
   }
 
+  // ✅ NEW: Force stop the original stream (for camera toggle)
+  forceStopOriginalStream() {
+    if (this.stream) {
+      console.log('🛑 Force stopping original camera stream')
+      this.stream.getTracks().forEach(track => {
+        track.stop()
+        console.log('🛑 Stopped original track:', track.kind, track.id)
+      })
+      this.stream = null
+      this.refCount = 0
+    }
+  }
+
   isStreamActive() {
     return this.stream && this.stream.active
   }
@@ -63,6 +76,9 @@ class GlobalStreamManager {
 
 // Global singleton instance
 const globalStreamManager = new GlobalStreamManager()
+
+// ✅ Export the manager so RoomPage can force stop the camera
+export { globalStreamManager }
 
 export function useWebRTC(socket, roomCode) {
   const [localStream, setLocalStream] = useState(null)

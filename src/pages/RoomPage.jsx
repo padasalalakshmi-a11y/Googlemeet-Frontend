@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
-import { useWebRTC } from '../hooks/useWebRTC'
+import { useWebRTC, globalStreamManager } from '../hooks/useWebRTC'
 import { useGoogleSpeechVAD } from '../hooks/useGoogleSpeechVAD'
 import { LANGUAGES } from '../config'
 import DebugPanel from '../components/DebugPanel'
@@ -22,7 +22,7 @@ export default function RoomPage() {
   }
 
   const { socket, isConnected } = useSocket()
-  const { localStream, remoteStreams, cameraError, createOffer, handleOffer, handleAnswer, handleIceCandidate, removePeer } = useWebRTC(socket, roomCode)
+  const { localStream, remoteStreams, cameraError, createOffer, handleOffer, handleAnswer, handleIceCandidate, removePeer, peersRef } = useWebRTC(socket, roomCode)
   
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
@@ -278,8 +278,75 @@ export default function RoomPage() {
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0]
       if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled
-        setVideoEnabled(videoTrack.enabled)
+        if (videoEnabled) {
+          // Turn OFF camera - ✅ PROPERLY STOP THE ORIGINAL STREAM
+          console.log('📹 Stopping camera completely...')
+          
+          // Stop the cloned stream tracks
+          localStream.getVideoTracks().forEach(track => {
+            track.stop()
+            console.log('🛑 Stopped cloned video track:', track.id)
+          })
+          
+          // ✅ CRITICAL: Force stop the original stream in GlobalStreamManager
+          globalStreamManager.forceStopOriginalStream()
+          
+          setVideoEnabled(false)
+          console.log('✅ Camera turned OFF - Light should be OFF now!')
+        } else {
+          // Turn ON camera - Get completely new stream
+          console.log('📹 Requesting new camera access...')
+          navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: false 
+          })
+            .then(newStream => {
+              const newVideoTrack = newStream.getVideoTracks()[0]
+              
+              console.log('✅ Got new video track:', newVideoTrack.id)
+              
+              // Remove all old video tracks
+              localStream.getVideoTracks().forEach(track => {
+                localStream.removeTrack(track)
+                console.log('🗑️ Removed old video track')
+              })
+              
+              // Add new video track
+              localStream.addTrack(newVideoTrack)
+              console.log('➕ Added new video track')
+              
+              // Update video element
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = localStream
+                console.log('🎥 Updated video element')
+              }
+              
+              // Update all peer connections with new video track
+              if (peersRef?.current) {
+                peersRef.current.forEach((peer, peerId) => {
+                  const sender = peer.getSenders().find(s => s.track?.kind === 'video')
+                  if (sender) {
+                    sender.replaceTrack(newVideoTrack)
+                      .then(() => console.log('✅ Video track updated for peer:', peerId))
+                      .catch(err => console.error('❌ Failed to update peer:', err))
+                  }
+                })
+              }
+              
+              setVideoEnabled(true)
+              console.log('✅ Camera turned ON')
+            })
+            .catch(error => {
+              console.error('❌ Failed to turn on camera:', error)
+              if (error.name === 'NotAllowedError') {
+                alert('Camera permission denied. Please allow camera access.')
+              } else if (error.name === 'NotFoundError') {
+                alert('No camera found. Please connect a camera.')
+              } else {
+                alert('Failed to turn on camera: ' + error.message)
+              }
+            })
+        }
       }
     }
   }

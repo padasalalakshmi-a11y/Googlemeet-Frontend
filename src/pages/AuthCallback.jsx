@@ -46,8 +46,8 @@ function AuthCallback() {
         }
 
         const data = await response.json()
-        console.log('✅ User data received:', data.user?.email || data.user?.name || 'User authenticated')
-        console.log('📦 Full user data:', data.user)
+        //console.log('✅ User data received:', data.user?.email || data.user?.name || 'User authenticated')
+        //console.log('📦 Full user data:', data.user)
 
         // Save token and user data
         localStorage.setItem('token', token)
