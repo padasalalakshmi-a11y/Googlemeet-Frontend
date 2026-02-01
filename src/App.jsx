@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
 import LandingPage from './pages/LandingPage'
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import AuthCallback from './pages/AuthCallback'
 import MeetPage from './pages/MeetPage'
 import PrejoinPage from './pages/PrejoinPage'
 import RoomPage from './pages/RoomPage'
@@ -29,6 +32,9 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/meet" element={<MeetPage />} />
         <Route path="/prejoin" element={<PrejoinPage />} />
         <Route path="/room/:roomCode" element={<PrejoinPage />} />

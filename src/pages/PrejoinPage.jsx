@@ -20,46 +20,86 @@ export default function PrejoinPage() {
   const [stream, setStream] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [authChecking, setAuthChecking] = useState(true)
   
   const videoRef = useRef(null)
+
+  // Check authentication and credits first
+  useEffect(() => {
+    const checkAuthAndCredits = () => {
+      const token = localStorage.getItem('token')
+      const userData = localStorage.getItem('user')
+      
+      // Check if user is logged in
+      if (!token || !userData) {
+        // Save the room code to redirect back after login
+        sessionStorage.setItem('redirectAfterLogin', `/room/${roomCode}`)
+        navigate(`/login?redirect=/room/${roomCode}`)
+        return
+      }
+      
+      // Check if user has credits
+      const user = JSON.parse(userData)
+      if (!user.credits || user.credits <= 0) {
+        setError('⚠️ You need credits to join this meeting. Please purchase credits first.')
+        setAuthChecking(false)
+        return
+      }
+      
+      // All checks passed
+      setAuthChecking(false)
+    }
+    
+    if (roomCode) {
+      checkAuthAndCredits()
+    }
+  }, [roomCode, navigate])
 
   useEffect(() => {
     if (!roomCode) {
       navigate('/meet')
       return
     }
-
-    // Get user media
-    const getUserMedia = async () => {
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        })
-        setStream(mediaStream)
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream
-        }
-      } catch (err) {
-        console.error('Error accessing media:', err)
-        setError('Could not access camera/microphone. Please check permissions.')
-      }
+    
+    // Don't start media until auth check is complete
+    if (authChecking) {
+      return
     }
 
-    getUserMedia()
+    // SKIP CAMERA PREVIEW - Don't get user media on prejoin page
+    // This prevents "Device in use" errors when navigating to room page
+    // Camera will start in the room page instead
+    
+    console.log('⏭️ Skipping camera preview on prejoin page to prevent conflicts')
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop())
-      }
+      // Cleanup (nothing to clean since we're not starting camera)
+      console.log('🧹 Prejoin cleanup (no camera to stop)')
     }
-  }, [roomCode, navigate])
+  }, [roomCode, navigate, authChecking])
 
   const handleJoinRoom = () => {
     if (!userName.trim()) {
       setError('Please enter your name')
       return
     }
+    
+    // Double-check credits before joining
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      const user = JSON.parse(userData)
+      if (!user.credits || user.credits <= 0) {
+        setError('⚠️ You need credits to join this meeting. Please purchase credits first.')
+        return
+      }
+    } else {
+      navigate('/login')
+      return
+    }
+
+    // Show loading state
+    setLoading(true)
+    setError('')
 
     // Save preferences
     localStorage.setItem('userName', userName)
@@ -72,13 +112,34 @@ export default function PrejoinPage() {
     sessionStorage.setItem('receiveLanguage', receiveLanguage)
     sessionStorage.setItem('roomCode', roomCode)
 
-    // Stop preview stream
+    // CRITICAL: Stop preview stream BEFORE navigating
+    console.log('🛑 Stopping prejoin stream before joining room...')
+    
+    // Stop all tracks from the stream
     if (stream) {
-      stream.getTracks().forEach(track => track.stop())
+      stream.getTracks().forEach(track => {
+        track.stop()
+        console.log(`  ✅ Stopped ${track.kind} track`)
+      })
+      setStream(null)
+    }
+    
+    // Also stop tracks from video element (belt and suspenders)
+    if (videoRef.current && videoRef.current.srcObject) {
+      const videoStream = videoRef.current.srcObject
+      videoStream.getTracks().forEach(track => {
+        track.stop()
+        console.log(`  ✅ Stopped ${track.kind} track from video element`)
+      })
+      videoRef.current.srcObject = null
     }
 
-    // Navigate to React RoomPage component
-    navigate(`/room-call?room=${roomCode}`)
+    // Longer delay to ensure tracks are fully released (2000ms for reliability)
+    console.log('⏳ Waiting 2000ms for device cleanup...')
+    setTimeout(() => {
+      console.log('✅ Navigating to room page...')
+      navigate(`/room-call?room=${roomCode}`)
+    }, 2000)
   }
 
   const toggleVideo = () => {
@@ -105,7 +166,62 @@ export default function PrejoinPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
       <Navbar />
       
-      <div className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      {/* Loading State */}
+      {authChecking && (
+        <div className="pt-24 pb-12 px-4 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-xl text-gray-600">Checking authentication...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* No Credits Error */}
+      {!authChecking && error && error.includes('credits') && (
+        <div className="pt-24 pb-12 px-4">
+          <div className="max-w-2xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-xl p-8 text-center"
+            >
+              <div className="text-6xl mb-4">⚠️</div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                Insufficient Credits
+              </h1>
+              <p className="text-xl text-gray-600 mb-6">
+                You need credits to join this meeting.
+              </p>
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="text-yellow-800 font-semibold">
+                  {error}
+                </p>
+              </div>
+              <div className="flex gap-4 justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/dashboard')}
+                  className="px-8 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  Buy Credits
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/')}
+                  className="px-8 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-colors"
+                >
+                  Go Home
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Content - Only show if auth passed */}
+      {!authChecking && (!error || !error.includes('credits')) && (
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -291,7 +407,7 @@ export default function PrejoinPage() {
             </div>
           </motion.div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

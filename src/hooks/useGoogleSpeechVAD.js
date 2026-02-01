@@ -9,7 +9,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000'
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000'
 
 export function useGoogleSpeechVAD(language = 'en') {
   const [isListening, setIsListening] = useState(false)
@@ -42,7 +42,7 @@ export function useGoogleSpeechVAD(language = 'en') {
     const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength
     
     // Stricter threshold to avoid background noise
-    const SPEECH_THRESHOLD = 45 // Higher = less sensitive to noise
+    const SPEECH_THRESHOLD = 35 // Higher = less sensitive to noise
     const isSpeakingNow = average > SPEECH_THRESHOLD
 
     // User started speaking
@@ -94,7 +94,7 @@ export function useGoogleSpeechVAD(language = 'en') {
             }
             mediaRecorderRef.current.stop()
           }
-        }, 20000)
+        }, 10000)
       }
     }
     

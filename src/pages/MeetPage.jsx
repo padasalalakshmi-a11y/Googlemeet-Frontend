@@ -14,6 +14,10 @@ export default function MeetPage() {
   const [showModal, setShowModal] = useState(false)
   const [meetingLink, setMeetingLink] = useState('')
   const dropdownRef = useRef(null)
+  
+  // Check user credits
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const hasCredits = user.credits && user.credits > 0
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,6 +45,12 @@ export default function MeetPage() {
   }
 
   const createMeeting = async (joinImmediately = false) => {
+    // Check credits first
+    if (!hasCredits) {
+      setError('⚠️ You need credits to create a meeting. Please purchase credits or login.')
+      return
+    }
+    
     setCreateLoading(true)
     setError('')
     setShowDropdown(false)
@@ -99,6 +109,12 @@ export default function MeetPage() {
 
   const handleJoinMeeting = async () => {
     if (createLoading || joinLoading) return // Prevent if any button is loading
+    
+    // Check credits first
+    if (!hasCredits) {
+      setError('⚠️ You need credits to join a meeting. Please purchase credits or login.')
+      return
+    }
     
     if (!roomCode.trim()) {
       setError('Please enter a room code')
@@ -172,21 +188,27 @@ export default function MeetPage() {
 
               <div className="relative" ref={dropdownRef}>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  disabled={createLoading || joinLoading}
-                  className="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  whileHover={{ scale: hasCredits ? 1.02 : 1 }}
+                  whileTap={{ scale: hasCredits ? 0.98 : 1 }}
+                  onClick={() => hasCredits && setShowDropdown(!showDropdown)}
+                  disabled={!hasCredits || createLoading || joinLoading}
+                  className={`w-full py-4 rounded-xl font-semibold text-lg shadow-lg transition-shadow flex items-center justify-center gap-2 ${
+                    hasCredits 
+                      ? 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-xl' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   <span className="text-xl">📹</span>
-                  {createLoading ? 'Creating...' : 'New Meeting'}
-                  <motion.span
-                    animate={{ rotate: showDropdown ? 180 : 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-sm"
-                  >
-                    ▼
-                  </motion.span>
+                  {!hasCredits ? 'No Credits Available' : createLoading ? 'Creating...' : 'New Meeting'}
+                  {hasCredits && (
+                    <motion.span
+                      animate={{ rotate: showDropdown ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-sm"
+                    >
+                      ▼
+                    </motion.span>
+                  )}
                 </motion.button>
 
                 {/* Dropdown Menu */}
@@ -239,6 +261,12 @@ export default function MeetPage() {
               <div className="mt-6 text-center text-sm text-gray-500">
                 ✨ No registration required
               </div>
+              
+              {!hasCredits && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm text-center">
+                  ⚠️ You need credits to create meetings. <a href="/login" className="underline font-semibold">Login</a> or <a href="/dashboard" className="underline font-semibold">buy credits</a>.
+                </div>
+              )}
             </motion.div>
 
             {/* Join Meeting */}
@@ -271,19 +299,29 @@ export default function MeetPage() {
                 />
 
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: hasCredits ? 1.02 : 1 }}
+                  whileTap={{ scale: hasCredits ? 0.98 : 1 }}
                   onClick={handleJoinMeeting}
-                  disabled={createLoading || joinLoading}
-                  className="w-full py-4 bg-gradient-to-r from-secondary to-accent text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!hasCredits || createLoading || joinLoading}
+                  className={`w-full py-4 rounded-xl font-semibold text-lg shadow-lg transition-shadow ${
+                    hasCredits 
+                      ? 'bg-gradient-to-r from-secondary to-accent text-white hover:shadow-xl' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
-                  {joinLoading ? 'Joining...' : 'Join Meeting'}
+                  {!hasCredits ? 'No Credits Available' : joinLoading ? 'Joining...' : 'Join Meeting'}
                 </motion.button>
               </div>
 
               <div className="mt-6 text-center text-sm text-gray-500">
                 🔒 Secure and private
               </div>
+              
+              {!hasCredits && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm text-center">
+                  ⚠️ You need credits to join meetings. <a href="/login" className="underline font-semibold">Login</a> or <a href="/dashboard" className="underline font-semibold">buy credits</a>.
+                </div>
+              )}
             </motion.div>
           </div>
 
