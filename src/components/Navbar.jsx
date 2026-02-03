@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
   
   // Check if user is logged in
@@ -111,9 +112,108 @@ export default function Navbar() {
             )}
           </div>
 
-          <button className="md:hidden text-2xl">☰</button>
+          <button 
+            className="md:hidden text-2xl text-gray-700 hover:text-primary transition-colors p-2"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      <motion.div
+        initial={false}
+        animate={{
+          height: mobileMenuOpen ? 'auto' : 0,
+          opacity: mobileMenuOpen ? 1 : 0
+        }}
+        transition={{ duration: 0.3 }}
+        className="md:hidden overflow-hidden bg-white/95 backdrop-blur-lg border-t border-gray-200"
+      >
+        <div className="px-4 py-4 space-y-4">
+          {/* Navigation Links */}
+          <a 
+            href="#features" 
+            className="block text-gray-700 hover:text-primary transition-colors py-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Features
+          </a>
+          <a 
+            href="#how-it-works" 
+            className="block text-gray-700 hover:text-primary transition-colors py-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            How it Works
+          </a>
+          <a 
+            href="#about" 
+            className="block text-gray-700 hover:text-primary transition-colors py-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            About
+          </a>
+          
+          {/* User Section */}
+          {user ? (
+            <div className="pt-4 border-t border-gray-200 space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="user-avatar">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-gray-700 font-medium">{user.name}</p>
+                  <div className="credits-badge inline-flex mt-1">
+                    <span className="credit-icon">💎</span>
+                    <span className="credit-count">{user.credits || 0}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  handleDashboard()
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full px-6 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-full font-semibold shadow-lg"
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  handleLogout()
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full logout-button"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="pt-4 border-t border-gray-200 space-y-3">
+              <button
+                onClick={() => {
+                  handleLogin()
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full login-button"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => {
+                  handleLogin()
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full px-6 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-full font-semibold shadow-lg"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
     </motion.nav>
   )
 }
